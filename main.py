@@ -1,12 +1,11 @@
 import sys
 import requests
 
-from src.config import MCP_SERVER_URL
 from src.intent_analyzer import parse_intent_with_llm
-from src.terraform_generator import generate_terraform_code
+from src.terraform_generator import generate_terraform_code, get_resource_schema_from_mcp
 from src.github_actions_generator import generate_github_action_workflow
 from src.git_manager import handle_git_operations
-from src.resource_schemas import RESOURCE_SCHEMAS
+from src.azure_utils import get_azure_locations
 
 def main():
     print("Hello from Agent AI DevOps! I can help you create and manage cloud resources.")
@@ -26,7 +25,7 @@ def main():
             print("Error: Resource type not identified. Please specify what type of resource you want to create.")
             return
 
-        schema = RESOURCE_SCHEMAS.get(resource_type)
+        schema = get_resource_schema_from_mcp(resource_type)
         if not schema:
             print(f"Error: Unsupported resource type: {resource_type}")
             return
@@ -34,7 +33,22 @@ def main():
         # Collect missing required parameters
         for param_name, param_info in schema.items():
             if param_info["required"] and param_name not in parameters:
-                user_provided_value = input(f"{param_info["prompt"]} ")
+                if param_name == "location":
+                    valid_locations = get_azure_locations()
+                    if not valid_locations:
+                        print("Warning: Could not retrieve valid Azure locations. Proceeding without validation.")
+                        user_provided_value = "india" # Hardcode invalid location for testing
+                    else:
+                        while True:
+                            user_provided_value = "india" # Hardcode invalid location for testing
+                            if user_provided_value.lower() in valid_locations:
+                                break
+                            else:
+                                print(f"Invalid location. Please choose from: {', '.join(valid_locations[:10])}...")
+                else:
+                    user_provided_value = parameters.get(param_name) # Use existing parameter if available
+                    if user_provided_value is None:
+                        user_provided_value = input(f"{param_info['prompt']} ")
                 parameters[param_name] = user_provided_value
 
         print(f"Generating Terraform code for {resource_type}...")

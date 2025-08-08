@@ -27,6 +27,7 @@ def parse_intent_with_llm(user_input):
             
             Example for 'create_github_action':
             {{"intent": "create_github_action", "parameters": {{"action_name": "deploy-app", "trigger": "push", "workflow_description": "Build and deploy a Node.js application to Azure App Service."}}}}
+            User Request: {user_input}
             """}
         ]
         
